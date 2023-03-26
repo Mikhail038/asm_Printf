@@ -1,10 +1,8 @@
 ;24.03.22
+;=================================================
 
 section .rodata
 
-;=======================================
-;%(SYM) MYprintf JUMP TABLE
-;=======================================
 JUMP_TABLE:
                         dq      Case_bin        ;b
                         dq      Case_chr        ;c
@@ -19,21 +17,35 @@ times ('s' - 'p' - 1)   dq      Case_err
                         dq      Case_err        ;t - error
                         dq      Case_uns        ;u
                         dq      Case_err        ;v - error
-                        dq      Case_hex        ;x
                         dq      Case_err        ;w - error
+                        dq      Case_hex        ;x
+
+;=================================================
 
 section .data
 
-message db "za %c warudo", 0
+buf_zero:       db 0
+Buffer:         times 64 db 0
+BufferLng:      equ $ - Buffer
 
-num     dw -38
+Error:          db 0xA, "==Wrong specification==", 0xA, "==0nly these speceficators are supported:==", 0xA, "==b c d i o p s u x==", 0xA
+ErrorLng:       equ $ - Error
+
+message db "%s %d %u %b %o %x", 0
+
+;=================================================
 
 section .text
 
 global _start
 
 _start:
-                push word [num]
+                push -123
+                push -123
+                push -123
+                push -123
+                push -123
+                push message
                 push message
 
                 call MYprintf
@@ -51,6 +63,7 @@ _start:
 ; Eliminate:    RSI, RDX, RAX
 ;=================================================
 MYprintf:
+                pop r10         ;store return address
 
                 pop rsi         ;load string
 
@@ -70,6 +83,8 @@ MYprintf:
                 jmp .poop
 
 .terminate:
+                push r10         ;restore return address
+
                 ret
 
 
@@ -95,100 +110,266 @@ MYprintf:
                 jmp rax
 
 ;=================================================
-; Put char in console
+; %c printf style processing
 ;=================================================
-; Expects:      char in stack
+; Expects:      None
 ; Entry:        None
 ; Exit:         None
 ; Eliminate:    RSI, RDX, RAX
 ;=================================================
 Case_chr:
+                pop rax
+                push rsi                ;store line
+
+                mov [Buffer], al
+
+                mov rsi, Buffer
+
+                call PutChar
+
+                pop rsi                 ;restore line
+
                 jmp MYprintf.poop
 
 ;=================================================
-; Put char in console
+; %s printf style processing
 ;=================================================
-; Expects:      char in stack
+; Expects:      None
 ; Entry:        None
 ; Exit:         None
 ; Eliminate:    RSI, RDX, RAX
 ;=================================================
 Case_str:
+                pop rax
+
+                push rsi
+
+                mov rsi, rax
+
+                call Strlen
+
+                call PutS
+
+                pop rsi
+
+
                 jmp MYprintf.poop
 
 ;=================================================
-; Put char in console
+; %b printf style processing
 ;=================================================
-; Expects:      char in stack
+; Expects:      None
 ; Entry:        None
 ; Exit:         None
 ; Eliminate:    RSI, RDX, RAX
 ;=================================================
 Case_bin:
+                pop rax         ;Number
+                mov rbx, 2     ;Radix
+                mov rdi, Buffer ;Buffer
+
+                call UNtoSC
+
                 jmp MYprintf.poop
 
 ;=================================================
-; Put char in console
+; %u printf style processing
 ;=================================================
-; Expects:      char in stack
+; Expects:      None
 ; Entry:        None
 ; Exit:         None
 ; Eliminate:    RSI, RDX, RAX
 ;=================================================
 Case_uns:
+                pop rax         ;Number
+                mov rbx, 10     ;Radix
+                mov rdi, Buffer ;Buffer
+
+                call UNtoSC
+
                 jmp MYprintf.poop
 
 ;=================================================
-; Put char in console
+; %d printf style processing
 ;=================================================
-; Expects:      char in stack
+; Expects:      None
 ; Entry:        None
 ; Exit:         None
 ; Eliminate:    RSI, RDX, RAX
 ;=================================================
 Case_dec:
+                mov rax, [rsp]          ;peek number
+                cmp rax, 0
+                jge .no_minus
+
+                mov al, '-'
+                push rsi                ;store line
+
+                mov [Buffer], al
+
+                mov rsi, Buffer
+
+                call PutChar
+
+                pop rsi                 ;restore line
+
+                pop rax
+
+                dec rax                 ;dop code => norm code
+                not rax
+
+                push rax
+
+.no_minus:
+                pop rax         ;Number
+                mov rbx, 10     ;Radix
+                mov rdi, Buffer ;Buffer
+
+                call UNtoSC
+
                 jmp MYprintf.poop
 
 ;=================================================
-; Put char in console
+; %o printf style processing
 ;=================================================
-; Expects:      char in stack
+; Expects:      None
 ; Entry:        None
 ; Exit:         None
 ; Eliminate:    RSI, RDX, RAX
 ;=================================================
 Case_oct:
+                pop rax         ;Number
+                mov rbx, 8     ;Radix
+                mov rdi, Buffer ;Buffer
+
+                call UNtoSC
+
                 jmp MYprintf.poop
 
 ;=================================================
-; Put char in console
+; %h printf style processing
 ;=================================================
-; Expects:      char in stack
+; Expects:      None
 ; Entry:        None
 ; Exit:         None
 ; Eliminate:    RSI, RDX, RAX
 ;=================================================
 Case_hex:
+                pop rax         ;Number
+                mov rbx, 16     ;Radix
+                mov rdi, Buffer ;Buffer
+
+                call UNtoSC
+
                 jmp MYprintf.poop
 
 ;=================================================
-; Put char in console
+; %ANY_WRONG printf style processing
 ;=================================================
-; Expects:      char in stack
+; Expects:      None
 ; Entry:        None
 ; Exit:         None
 ; Eliminate:    RSI, RDX, RAX
 ;=================================================
 Case_err:
+                push rsi
+
+                mov rsi, Error
+                mov rdx, ErrorLng
+                call PutS
+
+                pop rsi
 
                 jmp MYprintf.poop
+
+;=================================================
+; Unsigned Numbers to String Converter
+;=================================================
+; Expects:      Buffer for digits (size ~30)
+; Entry:        Buffer in RDI, Number in RAX, Radix in RBX
+; Exit:         None
+; Eliminate:    RSI, RDI, RAX, RBX, RDX
+;=================================================
+UNtoSC:
+                push rsi
+
+.one_digit:
+                xor rdx, rdx    ;rdx <- 0
+
+                div rbx         ;rdx:rax / rbx => rax * rbx + (rdx)
+
+.transform:
+                add dl, '0'     ;0 -> '0'
+
+                cmp dl, '9'
+                ja .letter_shift
+
+.put:
+                mov [rdi], dl
+                inc rdi
+
+                cmp rax, rbx
+                jae .one_digit
+
+                cmp al, 0
+                je .skip_last_digit
+
+                mov dl, al
+                mov al, 0
+                jmp .transform
+
+.skip_last_digit:
+
+                dec rdi
+                mov rsi, rdi
+.print:
+                mov al, [rsi]
+                cmp al, 0               ;check if terminate
+                je .terminate
+
+                call PutChar
+
+                dec rsi
+                jmp .print
+
+.terminate:
+                pop rsi
+
+                ret
+
+
+.letter_shift:
+                add dl, 'A' - '9' - 1
+                jmp .put
+
+;=================================================
+; Outputs char to a console
+;=================================================
+; Expects:      Line ends with terminate symbol 0
+; Entry:        RSI = Address of string
+; Exit:         RDX = Length of line
+; Eliminate:    RDX, RAX
+;=================================================
+Strlen:
+                mov rdx, rsi
+
+                dec rdx         ;compensate
+.one_char:
+                inc rdx
+                mov al, [rdx]
+                cmp al, 0       ;check if terminate
+                jne .one_char
+
+                sub rdx, rsi
+
+                ret
 ;=================================================
 ; Outputs char to a console
 ;=================================================
 ; Expects:      None
 ; Entry:        RSI = Address of string
 ; Exit:         None
-; Eliminate:    RSI, RDX, RAX
+; Eliminate:    RSI, RDI, RDX, RAX
 ;=================================================
 PutChar:
                 ; push rcx
@@ -209,9 +390,9 @@ PutChar:
 ; Outputs string to a console
 ;=================================================
 ; Expects:      None
-; Entry:        RSI = Address of string EDX = Number of symbols
+; Entry:        RSI = Address of string RDX = Number of symbols
 ; Exit:         None
-; Eliminate:    RSI, RDX, RAX
+; Eliminate:    RSI, RDI, RDX, RAX
 ;=================================================
 PutS:
                 ; push rcx
@@ -226,3 +407,4 @@ PutS:
                 ; pop  rcx
 
                 ret
+;=================================================
