@@ -37,22 +37,54 @@ message db "%s %d %u %b %o %x", 0
 
 section .text
 
-global _start
+global my_printf
 
-_start:
-                push -123
-                push -123
-                push -123
-                push -123
-                push -123
-                push message
-                push message
+my_printf:
+                pop r10
 
-                call MYprintf
+                push r9
+                push r8
+                push rcx
+                push rdx
+                push rsi
+                push rdi        ;store 6 parameters in stack
 
-                mov eax,    1
-                mov ebx,    0
-                int 0x80
+
+                push rbp        ;save base pointer
+                mov rbp, rsp    ;move base pointer
+                add rbp, 16     ;8 for base pointer and 8 for string (param -> string -> rbp || <= end of stack)
+                                                                ;       ^ here points rbp now
+
+                mov rsi, rdi    ; Now RSI = Address of template string
+
+                call MYprintf   ; Calling main function
+
+                pop  rbp        ; Restoring base pointer
+
+                pop  rdi
+                pop  rsi
+                pop  rdx
+                pop  rcx
+                pop  r8
+                pop  r9         ;restore parameters
+
+                push r10
+
+                ret
+
+;                 push 123
+;                 push 123
+;                 push 123
+;                 push 123
+;                 push 123
+;                 push message
+;                 push message
+;
+;                 call MYprintf
+;
+;                 mov eax,    1
+;                 mov ebx,    0
+;                 int 0x80
 
 ;=================================================
 ; Processes line as printf do
@@ -63,10 +95,6 @@ _start:
 ; Eliminate:    RSI, RDX, RAX
 ;=================================================
 MYprintf:
-                pop r10         ;store return address
-
-                pop rsi         ;load string
-
                 dec rsi         ;compensate
 .poop:
                 inc rsi
@@ -83,8 +111,6 @@ MYprintf:
                 jmp .poop
 
 .terminate:
-                push r10         ;restore return address
-
                 ret
 
 
@@ -118,16 +144,17 @@ MYprintf:
 ; Eliminate:    RSI, RDX, RAX
 ;=================================================
 Case_chr:
-                pop rax
+                mov rax, [rbp]  ; Popping out current argument
+                add rbp, 8      ; Moving base pointer to next argument
+
                 push rsi                ;store line
 
-                mov [Buffer], al
-
                 mov rsi, Buffer
+                mov [rsi], al
 
                 call PutChar
 
-                pop rsi                 ;restore line
+                pop rsi
 
                 jmp MYprintf.poop
 
@@ -140,7 +167,8 @@ Case_chr:
 ; Eliminate:    RSI, RDX, RAX
 ;=================================================
 Case_str:
-                pop rax
+                mov rax, [rbp]  ; Popping out current argument
+                add rbp, 8      ; Moving base pointer to next argument
 
                 push rsi
 
@@ -151,7 +179,6 @@ Case_str:
                 call PutS
 
                 pop rsi
-
 
                 jmp MYprintf.poop
 
@@ -164,7 +191,9 @@ Case_str:
 ; Eliminate:    RSI, RDX, RAX
 ;=================================================
 Case_bin:
-                pop rax         ;Number
+                mov rax, [rbp]  ; Popping out current argument
+                add rbp, 8      ; Moving base pointer to next argument
+
                 mov rbx, 2     ;Radix
                 mov rdi, Buffer ;Buffer
 
@@ -181,7 +210,9 @@ Case_bin:
 ; Eliminate:    RSI, RDX, RAX
 ;=================================================
 Case_uns:
-                pop rax         ;Number
+                mov rax, [rbp]  ; Popping out current argument
+                add rbp, 8      ; Moving base pointer to next argument
+
                 mov rbx, 10     ;Radix
                 mov rdi, Buffer ;Buffer
 
@@ -198,30 +229,29 @@ Case_uns:
 ; Eliminate:    RSI, RDX, RAX
 ;=================================================
 Case_dec:
-                mov rax, [rsp]          ;peek number
-                cmp rax, 0
+                mov rax, [rbp]  ;peek for checking no_minus
+                                ;no shift bp needed
+                cmp eax, 0
                 jge .no_minus
 
                 mov al, '-'
                 push rsi                ;store line
 
-                mov [Buffer], al
-
                 mov rsi, Buffer
+                mov [rsi], al
 
                 call PutChar
 
                 pop rsi                 ;restore line
 
-                pop rax
+                mov rax, [rbp]  ;peek number again
 
-                dec rax                 ;dop code => norm code
-                not rax
-
-                push rax
+                dec eax                 ;dop code => norm code
+                not eax
 
 .no_minus:
-                pop rax         ;Number
+                add rbp, 8      ;shift bp
+
                 mov rbx, 10     ;Radix
                 mov rdi, Buffer ;Buffer
 
@@ -238,7 +268,9 @@ Case_dec:
 ; Eliminate:    RSI, RDX, RAX
 ;=================================================
 Case_oct:
-                pop rax         ;Number
+                mov rax, [rbp]  ; Popping out current argument
+                add rbp, 8      ; Moving base pointer to next argument
+
                 mov rbx, 8     ;Radix
                 mov rdi, Buffer ;Buffer
 
@@ -255,7 +287,9 @@ Case_oct:
 ; Eliminate:    RSI, RDX, RAX
 ;=================================================
 Case_hex:
-                pop rax         ;Number
+                mov rax, [rbp]  ; Popping out current argument
+                add rbp, 8      ; Moving base pointer to next argument
+
                 mov rbx, 16     ;Radix
                 mov rdi, Buffer ;Buffer
 
@@ -288,7 +322,7 @@ Case_err:
 ; Expects:      Buffer for digits (size ~30)
 ; Entry:        Buffer in RDI, Number in RAX, Radix in RBX
 ; Exit:         None
-; Eliminate:    RSI, RDI, RAX, RBX, RDX
+; Eliminate:    RDI, RAX, RDX
 ;=================================================
 UNtoSC:
                 push rsi

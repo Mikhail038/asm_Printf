@@ -4,24 +4,24 @@
      4                                  section .rodata
      5                                  
      6                                  JUMP_TABLE:
-     7 00000000 [9900000000000000]                              dq      Case_bin        ;b
-     8 00000008 [6C00000000000000]                              dq      Case_chr        ;c
-     9 00000010 [CD00000000000000]                              dq      Case_dec        ;d
-    10 00000018 [4701000000000000]-     times ('i' - 'd' - 1)   dq      Case_err
+     7 00000000 [9E00000000000000]                              dq      Case_bin        ;b
+     8 00000008 [6800000000000000]                              dq      Case_chr        ;c
+     9 00000010 [E000000000000000]                              dq      Case_dec        ;d
+    10 00000018 [6501000000000000]-     times ('i' - 'd' - 1)   dq      Case_err
     10 00000018 <rep 4h>           
-    11 00000038 [CD00000000000000]                              dq      Case_dec        ;i
-    12 00000040 [4701000000000000]-     times ('o' - 'i' - 1)   dq      Case_err
+    11 00000038 [E000000000000000]                              dq      Case_dec        ;i
+    12 00000040 [6501000000000000]-     times ('o' - 'i' - 1)   dq      Case_err
     12 00000040 <rep 5h>           
-    13 00000068 [1301000000000000]                              dq      Case_oct        ;o
-    14 00000070 [2D01000000000000]                              dq      Case_hex        ;p
-    15 00000078 [4701000000000000]-     times ('s' - 'p' - 1)   dq      Case_err
+    13 00000068 [2301000000000000]                              dq      Case_oct        ;o
+    14 00000070 [4401000000000000]                              dq      Case_hex        ;p
+    15 00000078 [6501000000000000]-     times ('s' - 'p' - 1)   dq      Case_err
     15 00000078 <rep 2h>           
-    16 00000088 [8700000000000000]                              dq      Case_str        ;s
-    17 00000090 [4701000000000000]                              dq      Case_err        ;t - error
-    18 00000098 [B300000000000000]                              dq      Case_uns        ;u
-    19 000000A0 [4701000000000000]                              dq      Case_err        ;v - error
-    20 000000A8 [4701000000000000]                              dq      Case_err        ;w - error
-    21 000000B0 [2D01000000000000]                              dq      Case_hex        ;x
+    16 00000088 [8500000000000000]                              dq      Case_str        ;s
+    17 00000090 [6501000000000000]                              dq      Case_err        ;t - error
+    18 00000098 [BF00000000000000]                              dq      Case_uns        ;u
+    19 000000A0 [6501000000000000]                              dq      Case_err        ;v - error
+    20 000000A8 [6501000000000000]                              dq      Case_err        ;w - error
+    21 000000B0 [4401000000000000]                              dq      Case_hex        ;x
     22                                  
     23                                  ;=================================================
     24                                  
@@ -51,382 +51,416 @@
     37                                  
     38                                  section .text
     39                                  
-    40                                  global _start
+    40                                  global my_printf
     41                                  
-    42                                  _start:
-    43 00000000 6A85                                    push -123
-    44 00000002 6A85                                    push -123
-    45 00000004 6A85                                    push -123
-    46 00000006 6A85                                    push -123
-    47 00000008 6A85                                    push -123
-    48 0000000A 68[9C000000]                            push message
-    49 0000000F 68[9C000000]                            push message
-    50                                  
-    51 00000014 E80C000000                              call MYprintf
+    42                                  my_printf:
+    43 00000000 415A                                    pop r10
+    44                                  
+    45 00000002 4151                                    push r9
+    46 00000004 4150                                    push r8
+    47 00000006 51                                      push rcx
+    48 00000007 52                                      push rdx
+    49 00000008 56                                      push rsi
+    50 00000009 57                                      push rdi        ;store 6 parameters in stack
+    51                                  
     52                                  
-    53 00000019 B801000000                              mov eax,    1
-    54 0000001E BB00000000                              mov ebx,    0
-    55 00000023 CD80                                    int 0x80
-    56                                  
-    57                                  ;=================================================
-    58                                  ; Processes line as printf do
-    59                                  ;=================================================
-    60                                  ; Expects:      Needed data in stack
-    61                                  ; Entry:        None
-    62                                  ; Exit:         None
-    63                                  ; Eliminate:    RSI, RDX, RAX
-    64                                  ;=================================================
-    65                                  MYprintf:
-    66 00000025 415A                                    pop r10         ;store return address
-    67                                  
-    68 00000027 5E                                      pop rsi         ;load string
-    69                                  
-    70 00000028 48FFCE                                  dec rsi         ;compensate
-    71                                  .poop:
-    72 0000002B 48FFC6                                  inc rsi
-    73 0000002E 8A06                                    mov al, byte [rsi]      ;load symbol
+    53 0000000A 55                                      push rbp        ;save base pointer
+    54 0000000B 4889E5                                  mov rbp, rsp    ;move base pointer
+    55 0000000E 4883C510                                add rbp, 16     ;8 for base pointer and 8 for string (param -> string -> rbp || <= end of stack)
+    56                                                                                                  ;       ^ here points rbp now
+    57                                  
+    58 00000012 4889FE                                  mov rsi, rdi    ; Now RSI = Address of template string
+    59                                  
+    60 00000015 E80C000000                              call MYprintf   ; Calling main function
+    61                                  
+    62 0000001A 5D                                      pop  rbp        ; Restoring base pointer
+    63                                  
+    64 0000001B 5F                                      pop  rdi
+    65 0000001C 5E                                      pop  rsi
+    66 0000001D 5A                                      pop  rdx
+    67 0000001E 59                                      pop  rcx
+    68 0000001F 4158                                    pop  r8
+    69 00000021 4159                                    pop  r9         ;restore parameters
+    70                                  
+    71 00000023 4152                                    push r10
+    72                                  
+    73 00000025 C3                                      ret
     74                                  
-    75 00000030 3C00                                    cmp al, 0               ;check if terminate
-    76 00000032 740B                                    je .terminate
-    77                                  
-    78 00000034 3C25                                    cmp al, '%'             ;check if it is speceficator
-    79 00000036 740A                                    je .special
-    80                                  
-    81 00000038 E878010000                              call PutChar
-    82                                  
-    83 0000003D EBEC                                    jmp .poop
-    84                                  
-    85                                  .terminate:
-    86 0000003F 4152                                    push r10         ;restore return address
-    87                                  
-    88 00000041 C3                                      ret
-    89                                  
-    90                                  
-    91                                  .special:
-    92 00000042 48FFC6                                  inc rsi
-    93 00000045 8A06                                    mov al, byte [rsi]      ;load next symbol (%X)
-    94                                  
-    95 00000047 3C25                                    cmp al, '%'
-    96 00000049 7507                                    jne .plazdarm
-    97                                  
-    98 0000004B E865010000                              call PutChar
-    99                                  
-   100 00000050 EBD9                                    jmp .poop
-   101                                  
-   102                                  .plazdarm:
-   103 00000052 3C62                                    cmp al, 'b'             ;letter < b
-   104 00000054 0F82ED000000                            jb Case_err
+    75                                  ;                 push 123
+    76                                  ;                 push 123
+    77                                  ;                 push 123
+    78                                  ;                 push 123
+    79                                  ;                 push 123
+    80                                  ;                 push message
+    81                                  ;                 push message
+    82                                  ;
+    83                                  ;                 call MYprintf
+    84                                  ;
+    85                                  ;                 mov eax,    1
+    86                                  ;                 mov ebx,    0
+    87                                  ;                 int 0x80
+    88                                  
+    89                                  ;=================================================
+    90                                  ; Processes line as printf do
+    91                                  ;=================================================
+    92                                  ; Expects:      Needed data in stack
+    93                                  ; Entry:        None
+    94                                  ; Exit:         None
+    95                                  ; Eliminate:    RSI, RDX, RAX
+    96                                  ;=================================================
+    97                                  MYprintf:
+    98 00000026 48FFCE                                  dec rsi         ;compensate
+    99                                  .poop:
+   100 00000029 48FFC6                                  inc rsi
+   101 0000002C 8A06                                    mov al, byte [rsi]      ;load symbol
+   102                                  
+   103 0000002E 3C00                                    cmp al, 0               ;check if terminate
+   104 00000030 740B                                    je .terminate
    105                                  
-   106 0000005A 3C78                                    cmp al, 'x'             ;letter > x
-   107 0000005C 0F87E5000000                            ja Case_err
+   106 00000032 3C25                                    cmp al, '%'             ;check if it is speceficator
+   107 00000034 7408                                    je .special
    108                                  
-   109 00000062 488B04C5[F0FCFFFF]                      mov rax, [((rax - 'b') * 8 + JUMP_TABLE)]
-   110 0000006A FFE0                                    jmp rax
-   111                                  
-   112                                  ;=================================================
-   113                                  ; %c printf style processing
-   114                                  ;=================================================
-   115                                  ; Expects:      None
-   116                                  ; Entry:        None
-   117                                  ; Exit:         None
-   118                                  ; Eliminate:    RSI, RDX, RAX
-   119                                  ;=================================================
-   120                                  Case_chr:
-   121 0000006C 58                                      pop rax
-   122 0000006D 56                                      push rsi                ;store line
+   109 00000036 E898010000                              call PutChar
+   110                                  
+   111 0000003B EBEC                                    jmp .poop
+   112                                  
+   113                                  .terminate:
+   114 0000003D C3                                      ret
+   115                                  
+   116                                  
+   117                                  .special:
+   118 0000003E 48FFC6                                  inc rsi
+   119 00000041 8A06                                    mov al, byte [rsi]      ;load next symbol (%X)
+   120                                  
+   121 00000043 3C25                                    cmp al, '%'
+   122 00000045 7507                                    jne .plazdarm
    123                                  
-   124 0000006E 880425[01000000]                        mov [Buffer], al
+   124 00000047 E887010000                              call PutChar
    125                                  
-   126 00000075 48BE-                                   mov rsi, Buffer
-   126 00000077 [0100000000000000] 
+   126 0000004C EBDB                                    jmp .poop
    127                                  
-   128 0000007F E831010000                              call PutChar
-   129                                  
-   130 00000084 5E                                      pop rsi                 ;restore line
+   128                                  .plazdarm:
+   129 0000004E 3C62                                    cmp al, 'b'             ;letter < b
+   130 00000050 0F820F010000                            jb Case_err
    131                                  
-   132 00000085 EBA4                                    jmp MYprintf.poop
-   133                                  
-   134                                  ;=================================================
-   135                                  ; %s printf style processing
-   136                                  ;=================================================
-   137                                  ; Expects:      None
-   138                                  ; Entry:        None
-   139                                  ; Exit:         None
-   140                                  ; Eliminate:    RSI, RDX, RAX
-   141                                  ;=================================================
-   142                                  Case_str:
-   143 00000087 58                                      pop rax
-   144                                  
-   145 00000088 56                                      push rsi
-   146                                  
-   147 00000089 4889C6                                  mov rsi, rax
-   148                                  
-   149 0000008C E811010000                              call Strlen
-   150                                  
-   151 00000091 E831010000                              call PutS
-   152                                  
-   153 00000096 5E                                      pop rsi
+   132 00000056 3C78                                    cmp al, 'x'             ;letter > x
+   133 00000058 0F8707010000                            ja Case_err
+   134                                  
+   135 0000005E 488B04C5[F0FCFFFF]                      mov rax, [((rax - 'b') * 8 + JUMP_TABLE)]
+   136 00000066 FFE0                                    jmp rax
+   137                                  
+   138                                  ;=================================================
+   139                                  ; %c printf style processing
+   140                                  ;=================================================
+   141                                  ; Expects:      None
+   142                                  ; Entry:        None
+   143                                  ; Exit:         None
+   144                                  ; Eliminate:    RSI, RDX, RAX
+   145                                  ;=================================================
+   146                                  Case_chr:
+   147 00000068 488B4500                                mov rax, [rbp]  ; Popping out current argument
+   148 0000006C 4883C508                                add rbp, 8      ; Moving base pointer to next argument
+   149                                  
+   150 00000070 56                                      push rsi                ;store line
+   151                                  
+   152 00000071 48BE-                                   mov rsi, Buffer
+   152 00000073 [0100000000000000] 
+   153 0000007B 8806                                    mov [rsi], al
    154                                  
-   155                                  
-   156 00000097 EB92                                    jmp MYprintf.poop
-   157                                  
-   158                                  ;=================================================
-   159                                  ; %b printf style processing
-   160                                  ;=================================================
-   161                                  ; Expects:      None
-   162                                  ; Entry:        None
-   163                                  ; Exit:         None
-   164                                  ; Eliminate:    RSI, RDX, RAX
-   165                                  ;=================================================
-   166                                  Case_bin:
-   167 00000099 58                                      pop rax         ;Number
-   168 0000009A BB02000000                              mov rbx, 2     ;Radix
-   169 0000009F 48BF-                                   mov rdi, Buffer ;Buffer
-   169 000000A1 [0100000000000000] 
-   170                                  
-   171 000000A9 E8B4000000                              call UNtoSC
+   155 0000007D E851010000                              call PutChar
+   156                                  
+   157 00000082 5E                                      pop rsi
+   158                                  
+   159 00000083 EBA4                                    jmp MYprintf.poop
+   160                                  
+   161                                  ;=================================================
+   162                                  ; %s printf style processing
+   163                                  ;=================================================
+   164                                  ; Expects:      None
+   165                                  ; Entry:        None
+   166                                  ; Exit:         None
+   167                                  ; Eliminate:    RSI, RDX, RAX
+   168                                  ;=================================================
+   169                                  Case_str:
+   170 00000085 488B4500                                mov rax, [rbp]  ; Popping out current argument
+   171 00000089 4883C508                                add rbp, 8      ; Moving base pointer to next argument
    172                                  
-   173 000000AE E978FFFFFF                              jmp MYprintf.poop
+   173 0000008D 56                                      push rsi
    174                                  
-   175                                  ;=================================================
-   176                                  ; %u printf style processing
-   177                                  ;=================================================
-   178                                  ; Expects:      None
-   179                                  ; Entry:        None
-   180                                  ; Exit:         None
-   181                                  ; Eliminate:    RSI, RDX, RAX
-   182                                  ;=================================================
-   183                                  Case_uns:
-   184 000000B3 58                                      pop rax         ;Number
-   185 000000B4 BB0A000000                              mov rbx, 10     ;Radix
-   186 000000B9 48BF-                                   mov rdi, Buffer ;Buffer
-   186 000000BB [0100000000000000] 
-   187                                  
-   188 000000C3 E89A000000                              call UNtoSC
-   189                                  
-   190 000000C8 E95EFFFFFF                              jmp MYprintf.poop
-   191                                  
+   175 0000008E 4889C6                                  mov rsi, rax
+   176                                  
+   177 00000091 E82A010000                              call Strlen
+   178                                  
+   179 00000096 E84A010000                              call PutS
+   180                                  
+   181 0000009B 5E                                      pop rsi
+   182                                  
+   183 0000009C EB8B                                    jmp MYprintf.poop
+   184                                  
+   185                                  ;=================================================
+   186                                  ; %b printf style processing
+   187                                  ;=================================================
+   188                                  ; Expects:      None
+   189                                  ; Entry:        None
+   190                                  ; Exit:         None
+   191                                  ; Eliminate:    RSI, RDX, RAX
    192                                  ;=================================================
-   193                                  ; %d printf style processing
-   194                                  ;=================================================
-   195                                  ; Expects:      None
-   196                                  ; Entry:        None
-   197                                  ; Exit:         None
-   198                                  ; Eliminate:    RSI, RDX, RAX
-   199                                  ;=================================================
-   200                                  Case_dec:
-   201 000000CD 488B0424                                mov rax, [rsp]          ;peek number
-   202 000000D1 4883F800                                cmp rax, 0
-   203 000000D5 7D22                                    jge .no_minus
-   204                                  
-   205 000000D7 B02D                                    mov al, '-'
-   206 000000D9 56                                      push rsi                ;store line
-   207                                  
-   208 000000DA 880425[01000000]                        mov [Buffer], al
-   209                                  
-   210 000000E1 48BE-                                   mov rsi, Buffer
-   210 000000E3 [0100000000000000] 
-   211                                  
-   212 000000EB E8C5000000                              call PutChar
-   213                                  
-   214 000000F0 5E                                      pop rsi                 ;restore line
+   193                                  Case_bin:
+   194 0000009E 488B4500                                mov rax, [rbp]  ; Popping out current argument
+   195 000000A2 4883C508                                add rbp, 8      ; Moving base pointer to next argument
+   196                                  
+   197 000000A6 BB02000000                              mov rbx, 2     ;Radix
+   198 000000AB 48BF-                                   mov rdi, Buffer ;Buffer
+   198 000000AD [0100000000000000] 
+   199                                  
+   200 000000B5 E8C6000000                              call UNtoSC
+   201                                  
+   202 000000BA E96AFFFFFF                              jmp MYprintf.poop
+   203                                  
+   204                                  ;=================================================
+   205                                  ; %u printf style processing
+   206                                  ;=================================================
+   207                                  ; Expects:      None
+   208                                  ; Entry:        None
+   209                                  ; Exit:         None
+   210                                  ; Eliminate:    RSI, RDX, RAX
+   211                                  ;=================================================
+   212                                  Case_uns:
+   213 000000BF 488B4500                                mov rax, [rbp]  ; Popping out current argument
+   214 000000C3 4883C508                                add rbp, 8      ; Moving base pointer to next argument
    215                                  
-   216 000000F1 58                                      pop rax
-   217                                  
-   218 000000F2 48FFC8                                  dec rax                 ;dop code => norm code
-   219 000000F5 48F7D0                                  not rax
+   216 000000C7 BB0A000000                              mov rbx, 10     ;Radix
+   217 000000CC 48BF-                                   mov rdi, Buffer ;Buffer
+   217 000000CE [0100000000000000] 
+   218                                  
+   219 000000D6 E8A5000000                              call UNtoSC
    220                                  
-   221 000000F8 50                                      push rax
+   221 000000DB E949FFFFFF                              jmp MYprintf.poop
    222                                  
-   223                                  .no_minus:
-   224 000000F9 58                                      pop rax         ;Number
-   225 000000FA BB0A000000                              mov rbx, 10     ;Radix
-   226 000000FF 48BF-                                   mov rdi, Buffer ;Buffer
-   226 00000101 [0100000000000000] 
-   227                                  
-   228 00000109 E854000000                              call UNtoSC
-   229                                  
-   230 0000010E E918FFFFFF                              jmp MYprintf.poop
-   231                                  
-   232                                  ;=================================================
-   233                                  ; %o printf style processing
-   234                                  ;=================================================
-   235                                  ; Expects:      None
-   236                                  ; Entry:        None
-   237                                  ; Exit:         None
-   238                                  ; Eliminate:    RSI, RDX, RAX
-   239                                  ;=================================================
-   240                                  Case_oct:
-   241 00000113 58                                      pop rax         ;Number
-   242 00000114 BB08000000                              mov rbx, 8     ;Radix
-   243 00000119 48BF-                                   mov rdi, Buffer ;Buffer
-   243 0000011B [0100000000000000] 
+   223                                  ;=================================================
+   224                                  ; %d printf style processing
+   225                                  ;=================================================
+   226                                  ; Expects:      None
+   227                                  ; Entry:        None
+   228                                  ; Exit:         None
+   229                                  ; Eliminate:    RSI, RDX, RAX
+   230                                  ;=================================================
+   231                                  Case_dec:
+   232 000000E0 488B4500                                mov rax, [rbp]  ;peek for checking no_minus
+   233                                                                  ;no shift bp needed
+   234 000000E4 83F800                                  cmp eax, 0
+   235 000000E7 7D1D                                    jge .no_minus
+   236                                  
+   237 000000E9 B02D                                    mov al, '-'
+   238 000000EB 56                                      push rsi                ;store line
+   239                                  
+   240 000000EC 48BE-                                   mov rsi, Buffer
+   240 000000EE [0100000000000000] 
+   241 000000F6 8806                                    mov [rsi], al
+   242                                  
+   243 000000F8 E8D6000000                              call PutChar
    244                                  
-   245 00000123 E83A000000                              call UNtoSC
+   245 000000FD 5E                                      pop rsi                 ;restore line
    246                                  
-   247 00000128 E9FEFEFFFF                              jmp MYprintf.poop
+   247 000000FE 488B4500                                mov rax, [rbp]  ;peek number again
    248                                  
-   249                                  ;=================================================
-   250                                  ; %h printf style processing
-   251                                  ;=================================================
-   252                                  ; Expects:      None
-   253                                  ; Entry:        None
-   254                                  ; Exit:         None
-   255                                  ; Eliminate:    RSI, RDX, RAX
-   256                                  ;=================================================
-   257                                  Case_hex:
-   258 0000012D 58                                      pop rax         ;Number
-   259 0000012E BB10000000                              mov rbx, 16     ;Radix
-   260 00000133 48BF-                                   mov rdi, Buffer ;Buffer
-   260 00000135 [0100000000000000] 
+   249 00000102 FFC8                                    dec eax                 ;dop code => norm code
+   250 00000104 F7D0                                    not eax
+   251                                  
+   252                                  .no_minus:
+   253 00000106 4883C508                                add rbp, 8      ;shift bp
+   254                                  
+   255 0000010A BB0A000000                              mov rbx, 10     ;Radix
+   256 0000010F 48BF-                                   mov rdi, Buffer ;Buffer
+   256 00000111 [0100000000000000] 
+   257                                  
+   258 00000119 E862000000                              call UNtoSC
+   259                                  
+   260 0000011E E906FFFFFF                              jmp MYprintf.poop
    261                                  
-   262 0000013D E820000000                              call UNtoSC
-   263                                  
-   264 00000142 E9E4FEFFFF                              jmp MYprintf.poop
-   265                                  
-   266                                  ;=================================================
-   267                                  ; %ANY_WRONG printf style processing
-   268                                  ;=================================================
-   269                                  ; Expects:      None
-   270                                  ; Entry:        None
-   271                                  ; Exit:         None
-   272                                  ; Eliminate:    RSI, RDX, RAX
-   273                                  ;=================================================
-   274                                  Case_err:
-   275 00000147 56                                      push rsi
+   262                                  ;=================================================
+   263                                  ; %o printf style processing
+   264                                  ;=================================================
+   265                                  ; Expects:      None
+   266                                  ; Entry:        None
+   267                                  ; Exit:         None
+   268                                  ; Eliminate:    RSI, RDX, RAX
+   269                                  ;=================================================
+   270                                  Case_oct:
+   271 00000123 488B4500                                mov rax, [rbp]  ; Popping out current argument
+   272 00000127 4883C508                                add rbp, 8      ; Moving base pointer to next argument
+   273                                  
+   274 0000012B BB08000000                              mov rbx, 8     ;Radix
+   275 00000130 48BF-                                   mov rdi, Buffer ;Buffer
+   275 00000132 [0100000000000000] 
    276                                  
-   277 00000148 48BE-                                   mov rsi, Error
-   277 0000014A [4100000000000000] 
-   278 00000152 BA5B000000                              mov rdx, ErrorLng
-   279 00000157 E86B000000                              call PutS
+   277 0000013A E841000000                              call UNtoSC
+   278                                  
+   279 0000013F E9E5FEFFFF                              jmp MYprintf.poop
    280                                  
-   281 0000015C 5E                                      pop rsi
-   282                                  
-   283 0000015D E9C9FEFFFF                              jmp MYprintf.poop
-   284                                  
-   285                                  ;=================================================
-   286                                  ; Unsigned Numbers to String Converter
-   287                                  ;=================================================
-   288                                  ; Expects:      Buffer for digits (size ~30)
-   289                                  ; Entry:        Buffer in RDI, Number in RAX, Radix in RBX
-   290                                  ; Exit:         None
-   291                                  ; Eliminate:    RSI, RDI, RAX, RBX, RDX
-   292                                  ;=================================================
-   293                                  UNtoSC:
-   294 00000162 56                                      push rsi
+   281                                  ;=================================================
+   282                                  ; %h printf style processing
+   283                                  ;=================================================
+   284                                  ; Expects:      None
+   285                                  ; Entry:        None
+   286                                  ; Exit:         None
+   287                                  ; Eliminate:    RSI, RDX, RAX
+   288                                  ;=================================================
+   289                                  Case_hex:
+   290 00000144 488B4500                                mov rax, [rbp]  ; Popping out current argument
+   291 00000148 4883C508                                add rbp, 8      ; Moving base pointer to next argument
+   292                                  
+   293 0000014C BB10000000                              mov rbx, 16     ;Radix
+   294 00000151 48BF-                                   mov rdi, Buffer ;Buffer
+   294 00000153 [0100000000000000] 
    295                                  
-   296                                  .one_digit:
-   297 00000163 4831D2                                  xor rdx, rdx    ;rdx <- 0
-   298                                  
-   299 00000166 48F7F3                                  div rbx         ;rdx:rax / rbx => rax * rbx + (rdx)
-   300                                  
-   301                                  .transform:
-   302 00000169 80C230                                  add dl, '0'     ;0 -> '0'
-   303                                  
-   304 0000016C 80FA39                                  cmp dl, '9'
-   305 0000016F 772C                                    ja .letter_shift
-   306                                  
-   307                                  .put:
-   308 00000171 8817                                    mov [rdi], dl
-   309 00000173 48FFC7                                  inc rdi
+   296 0000015B E820000000                              call UNtoSC
+   297                                  
+   298 00000160 E9C4FEFFFF                              jmp MYprintf.poop
+   299                                  
+   300                                  ;=================================================
+   301                                  ; %ANY_WRONG printf style processing
+   302                                  ;=================================================
+   303                                  ; Expects:      None
+   304                                  ; Entry:        None
+   305                                  ; Exit:         None
+   306                                  ; Eliminate:    RSI, RDX, RAX
+   307                                  ;=================================================
+   308                                  Case_err:
+   309 00000165 56                                      push rsi
    310                                  
-   311 00000176 4839D8                                  cmp rax, rbx
-   312 00000179 73E8                                    jae .one_digit
-   313                                  
-   314 0000017B 3C00                                    cmp al, 0
-   315 0000017D 7406                                    je .skip_last_digit
+   311 00000166 48BE-                                   mov rsi, Error
+   311 00000168 [4100000000000000] 
+   312 00000170 BA5B000000                              mov rdx, ErrorLng
+   313 00000175 E86B000000                              call PutS
+   314                                  
+   315 0000017A 5E                                      pop rsi
    316                                  
-   317 0000017F 88C2                                    mov dl, al
-   318 00000181 B000                                    mov al, 0
-   319 00000183 EBE4                                    jmp .transform
-   320                                  
-   321                                  .skip_last_digit:
-   322                                  
-   323 00000185 48FFCF                                  dec rdi
-   324 00000188 4889FE                                  mov rsi, rdi
-   325                                  .print:
-   326 0000018B 8A06                                    mov al, [rsi]
-   327 0000018D 3C00                                    cmp al, 0               ;check if terminate
-   328 0000018F 740A                                    je .terminate
+   317 0000017B E9A9FEFFFF                              jmp MYprintf.poop
+   318                                  
+   319                                  ;=================================================
+   320                                  ; Unsigned Numbers to String Converter
+   321                                  ;=================================================
+   322                                  ; Expects:      Buffer for digits (size ~30)
+   323                                  ; Entry:        Buffer in RDI, Number in RAX, Radix in RBX
+   324                                  ; Exit:         None
+   325                                  ; Eliminate:    RDI, RAX, RDX
+   326                                  ;=================================================
+   327                                  UNtoSC:
+   328 00000180 56                                      push rsi
    329                                  
-   330 00000191 E81F000000                              call PutChar
-   331                                  
-   332 00000196 48FFCE                                  dec rsi
-   333 00000199 EBF0                                    jmp .print
+   330                                  .one_digit:
+   331 00000181 4831D2                                  xor rdx, rdx    ;rdx <- 0
+   332                                  
+   333 00000184 48F7F3                                  div rbx         ;rdx:rax / rbx => rax * rbx + (rdx)
    334                                  
-   335                                  .terminate:
-   336 0000019B 5E                                      pop rsi
+   335                                  .transform:
+   336 00000187 80C230                                  add dl, '0'     ;0 -> '0'
    337                                  
-   338 0000019C C3                                      ret
-   339                                  
+   338 0000018A 80FA39                                  cmp dl, '9'
+   339 0000018D 772C                                    ja .letter_shift
    340                                  
-   341                                  .letter_shift:
-   342 0000019D 80C207                                  add dl, 'A' - '9' - 1
-   343 000001A0 EBCF                                    jmp .put
+   341                                  .put:
+   342 0000018F 8817                                    mov [rdi], dl
+   343 00000191 48FFC7                                  inc rdi
    344                                  
-   345                                  ;=================================================
-   346                                  ; Outputs char to a console
-   347                                  ;=================================================
-   348                                  ; Expects:      Line ends with terminate symbol 0
-   349                                  ; Entry:        RSI = Address of string
-   350                                  ; Exit:         RDX = Length of line
-   351                                  ; Eliminate:    RDX, RAX
-   352                                  ;=================================================
-   353                                  Strlen:
-   354 000001A2 4889F2                                  mov rdx, rsi
-   355                                  
-   356 000001A5 48FFCA                                  dec rdx         ;compensate
-   357                                  .one_char:
-   358 000001A8 48FFC2                                  inc rdx
-   359 000001AB 8A02                                    mov al, [rdx]
-   360 000001AD 3C00                                    cmp al, 0       ;check if terminate
-   361 000001AF 75F7                                    jne .one_char
-   362                                  
-   363 000001B1 4829F2                                  sub rdx, rsi
-   364                                  
-   365 000001B4 C3                                      ret
-   366                                  ;=================================================
-   367                                  ; Outputs char to a console
-   368                                  ;=================================================
-   369                                  ; Expects:      None
-   370                                  ; Entry:        RSI = Address of string
-   371                                  ; Exit:         None
-   372                                  ; Eliminate:    RSI, RDI, RDX, RAX
-   373                                  ;=================================================
-   374                                  PutChar:
-   375                                                  ; push rcx
-   376                                                  ; push r11
-   377                                  
-   378 000001B5 B801000000                              mov rax, 1
-   379 000001BA BF01000000                              mov rdi, 1
-   380 000001BF BA01000000                              mov rdx, 1
-   381                                  
-   382 000001C4 0F05                                    syscall
-   383                                  
-   384                                                  ; pop  r11
-   385                                                  ; pop  rcx
-   386                                  
-   387 000001C6 C3                                      ret
-   388                                  
-   389                                  ;=================================================
-   390                                  ; Outputs string to a console
-   391                                  ;=================================================
-   392                                  ; Expects:      None
-   393                                  ; Entry:        RSI = Address of string RDX = Number of symbols
-   394                                  ; Exit:         None
-   395                                  ; Eliminate:    RSI, RDI, RDX, RAX
-   396                                  ;=================================================
-   397                                  PutS:
-   398                                                  ; push rcx
-   399                                                  ; push r11
-   400                                  
-   401 000001C7 B801000000                              mov rax, 1
-   402 000001CC BF01000000                              mov rdi, 1
-   403                                  
-   404 000001D1 0F05                                    syscall
-   405                                  
-   406                                                  ; pop  r11
-   407                                                  ; pop  rcx
-   408                                  
-   409 000001D3 C3                                      ret
-   410                                  ;=================================================
+   345 00000194 4839D8                                  cmp rax, rbx
+   346 00000197 73E8                                    jae .one_digit
+   347                                  
+   348 00000199 3C00                                    cmp al, 0
+   349 0000019B 7406                                    je .skip_last_digit
+   350                                  
+   351 0000019D 88C2                                    mov dl, al
+   352 0000019F B000                                    mov al, 0
+   353 000001A1 EBE4                                    jmp .transform
+   354                                  
+   355                                  .skip_last_digit:
+   356                                  
+   357 000001A3 48FFCF                                  dec rdi
+   358 000001A6 4889FE                                  mov rsi, rdi
+   359                                  .print:
+   360 000001A9 8A06                                    mov al, [rsi]
+   361 000001AB 3C00                                    cmp al, 0               ;check if terminate
+   362 000001AD 740A                                    je .terminate
+   363                                  
+   364 000001AF E81F000000                              call PutChar
+   365                                  
+   366 000001B4 48FFCE                                  dec rsi
+   367 000001B7 EBF0                                    jmp .print
+   368                                  
+   369                                  .terminate:
+   370 000001B9 5E                                      pop rsi
+   371                                  
+   372 000001BA C3                                      ret
+   373                                  
+   374                                  
+   375                                  .letter_shift:
+   376 000001BB 80C207                                  add dl, 'A' - '9' - 1
+   377 000001BE EBCF                                    jmp .put
+   378                                  
+   379                                  ;=================================================
+   380                                  ; Outputs char to a console
+   381                                  ;=================================================
+   382                                  ; Expects:      Line ends with terminate symbol 0
+   383                                  ; Entry:        RSI = Address of string
+   384                                  ; Exit:         RDX = Length of line
+   385                                  ; Eliminate:    RDX, RAX
+   386                                  ;=================================================
+   387                                  Strlen:
+   388 000001C0 4889F2                                  mov rdx, rsi
+   389                                  
+   390 000001C3 48FFCA                                  dec rdx         ;compensate
+   391                                  .one_char:
+   392 000001C6 48FFC2                                  inc rdx
+   393 000001C9 8A02                                    mov al, [rdx]
+   394 000001CB 3C00                                    cmp al, 0       ;check if terminate
+   395 000001CD 75F7                                    jne .one_char
+   396                                  
+   397 000001CF 4829F2                                  sub rdx, rsi
+   398                                  
+   399 000001D2 C3                                      ret
+   400                                  ;=================================================
+   401                                  ; Outputs char to a console
+   402                                  ;=================================================
+   403                                  ; Expects:      None
+   404                                  ; Entry:        RSI = Address of string
+   405                                  ; Exit:         None
+   406                                  ; Eliminate:    RSI, RDI, RDX, RAX
+   407                                  ;=================================================
+   408                                  PutChar:
+   409                                                  ; push rcx
+   410                                                  ; push r11
+   411                                  
+   412 000001D3 B801000000                              mov rax, 1
+   413 000001D8 BF01000000                              mov rdi, 1
+   414 000001DD BA01000000                              mov rdx, 1
+   415                                  
+   416 000001E2 0F05                                    syscall
+   417                                  
+   418                                                  ; pop  r11
+   419                                                  ; pop  rcx
+   420                                  
+   421 000001E4 C3                                      ret
+   422                                  
+   423                                  ;=================================================
+   424                                  ; Outputs string to a console
+   425                                  ;=================================================
+   426                                  ; Expects:      None
+   427                                  ; Entry:        RSI = Address of string RDX = Number of symbols
+   428                                  ; Exit:         None
+   429                                  ; Eliminate:    RSI, RDI, RDX, RAX
+   430                                  ;=================================================
+   431                                  PutS:
+   432                                                  ; push rcx
+   433                                                  ; push r11
+   434                                  
+   435 000001E5 B801000000                              mov rax, 1
+   436 000001EA BF01000000                              mov rdi, 1
+   437                                  
+   438 000001EF 0F05                                    syscall
+   439                                  
+   440                                                  ; pop  r11
+   441                                                  ; pop  rcx
+   442                                  
+   443 000001F1 C3                                      ret
+   444                                  ;=================================================

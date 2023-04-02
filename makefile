@@ -1,17 +1,23 @@
 
+VR_C	= test
+VR_ASM 	= printf
+
 .PHONY: all
 all:
 #@echo "==Compiling C file;"
-#@gcc -c main.c -o main.o -O0
 
 	@echo "==Compiling Assembler file"
-	@nasm -g -f elf64 -l printf.lst -o printf.o -g printf.asm
+	@nasm -g -f elf64 -l $(VR_ASM).lst -o $(VR_ASM).o -g $(VR_ASM).asm
 
-#@echo "Linking files;"
-#@gcc -no-pie main.o printf.o -o main
+	@echo "==Compiling main"
+	@gcc -c $(VR_C).c -o $(VR_C).o -O0
 
-	@ld -no-pie printf.o -o printf_exec
+	@echo "==Linking files"
+	@gcc -no-pie $(VR_C).o printf.o -o $(VR_C)
+
+#@ld -no-pie printf.o -o printf_exec
 	@echo "==Finished"
+
 #=============================================================
 
 .PHONY: clean
